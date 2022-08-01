@@ -42,6 +42,8 @@ class CWLParser(Parser):
         return filename
 
     def add_header(self, content: Dict, document: nodes.document):
+        if not content:
+            return
         if "tool" in content["class"].lower():
             header = "Tool " + str(content["baseCommand"])  # TODO
         elif "workflow" in content["class"].lower():
@@ -53,7 +55,7 @@ class CWLParser(Parser):
         document.append(rubric)
 
     def add_docs(self, content: Dict, document: nodes.document):
-        if "doc" not in content:
+        if not content or "doc" not in content:
             return
 
         rubric = nodes.rubric(text="Description")
@@ -61,7 +63,7 @@ class CWLParser(Parser):
         document.append(rubric)
 
     def add_inputs(self, content: Dict, document: nodes.document):
-        if "inputs" not in content:
+        if not content or "inputs" not in content:
             return
 
         data = []
@@ -76,7 +78,7 @@ class CWLParser(Parser):
                 df = None
             else:
                 doc = arg.get("doc", " ").replace('\n', ' ')
-                tp = arg.get("type", "string").replace('?', '')
+                tp = arg.get("type", "string")
                 df = arg.get("default", None)
 
             if df is not None:
@@ -94,7 +96,7 @@ class CWLParser(Parser):
         )
 
     def add_outputs(self, content: Dict, document: nodes.document):
-        if "outputs" not in content:
+        if not content or "outputs" not in content:
             return
 
         data = []
@@ -116,13 +118,19 @@ class CWLParser(Parser):
         )
 
     def add_steps(self, content: Dict, document: nodes.document):
-        if "steps" not in content:
+        if not content or "steps" not in content:
             return
 
         steps = content["steps"]
         data = []
-        for name in steps:
-            arg = steps[name]
+        for item in steps:
+            if isinstance(item, dict):
+                name = item['id']
+                arg = item
+            else:
+                name = item
+                arg = steps[name]
+
             doc = arg.get("doc", " ").replace('\n', ' ')
             runs = arg["run"]
             if isinstance(runs, str):
