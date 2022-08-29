@@ -186,8 +186,8 @@ class CWLParser:
                 ref_uri = runs.replace('.cwl', '.md')
                 target = f'[{runs}]({ref_uri})'
             elif runs.get('class').lower() == 'workflow':
-                file_name = self._handle_sub_workflow(runs)
-                target = f"[{file_name.replace('.md', '.cwl')}]({file_name})"
+                file_name = self._handle_sub_workflow(name, runs)
+                target = f"[sub-workflow]({file_name})"
             else:
                 target = runs.get('baseCommand', 'command')
 
@@ -195,15 +195,19 @@ class CWLParser:
 
         self.md_file.add_table(data=data)
 
-    def _handle_sub_workflow(self, data: Dict[str, Any]) -> str:
+    def _handle_sub_workflow(self, workflow_name: str, data: Dict[str, Any]) -> str:
         prepared_data = {
             **data,
             'cwlVersion': self.yaml_content['cwlVersion'],
             'requirements': self.yaml_content['requirements'],
         }
+        pipeline_file_name = self._get_filename(self.input_file_path)
+        header = f'### Sub-workflow *{workflow_name}* from {pipeline_file_name} \n\n'
+
         source_dir, basename = os.path.split(self.input_file_path)
 
         with tempfile.NamedTemporaryFile(mode='w+', dir=source_dir, suffix=basename) as temp_file:
+            temp_file.write(header)
             yaml.safe_dump(prepared_data, temp_file)
 
             self.sub_workflow_counter += 1
