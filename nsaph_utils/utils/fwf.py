@@ -88,7 +88,7 @@ class FWFMeta:
         if (size is not None) and (self.size != size):
             #assert self.size == size
             logging.warning("Size mismatch: expected: {:,}; actual: {:,}"
-                            .format(self.size, size))
+                            .format(size, self.size))
         self.path = path
         '''Physical path to the file on the file system'''
 
@@ -114,6 +114,7 @@ class FWFReader:
         """
 
         self.metadata = meta
+        self.name = self.metadata.path
         self.input = None
         self.rdict = ret_dict
         self.line = 0
