@@ -18,7 +18,10 @@
 #
 
 """
-A reader for fixed width files (FWF) produced by SAS. Each record is returned
+A reader for fixed width files (FWF) produced by SAS providing the same
+interface as `CSV reader <https://docs.python.org/3/library/csv.html>`_.
+
+Each record is returned
 in a way similar to the standard CSV reader, either as a list of objects
 or as a dictionary, where keys are column headers.
 

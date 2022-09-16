@@ -17,9 +17,10 @@ specific infrastructure and execution environment as possible.
 Included utilities:
 
 * Interpolation code
-* Reading FST files from Python
-* various I/O wrappers
-* An API and CLI framework
+* Reading FST files from Python [](members/pyfst)
+* Reading FWF files [](members/fwf)
+* various I/O wrappers [](members/io_utils)
+* An API and CLI framework [](members/context)
 * QC Framework
 * Documentation utilities to simplify creation of consistent 
  documentation for NSAPH platform 

@@ -1,3 +1,12 @@
+"""
+A reader for `FST files <https://www.fstpackage.org/>`_
+providing the same
+interface as `CSV reader <https://docs.python.org/3/library/csv.html>`_.
+
+
+"""
+
+
 #  Copyright (c) 2021. Harvard University
 #
 #  Developed by Research Software Engineering,
@@ -71,6 +80,10 @@ def vector2list(v):
 
 
 class FSTReader:
+    """
+    Class providing CSV-like interface for FST files
+    """
+
     def __init__(self, path, buffer_size = 10000, returns_mapping = False):
         if not path.endswith(".fst"):
             raise Exception("Unknown format of file " + path)
