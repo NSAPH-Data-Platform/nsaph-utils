@@ -105,8 +105,10 @@ class CWLParser:
         self.md_file.add_image(filename)
 
     def _add_header(self):
-        if 'tool' in self.yaml_content['class'].lower():
-            header = '**Tool** ' + self._extract_tool(str(self.yaml_content['baseCommand']))
+        if "expressiontool" in self.yaml_content['class'].lower():
+            header = '**JavaScript Tool** '
+        elif 'tool' in self.yaml_content['class'].lower():
+            header = '**Tool**. Runs: ' + self._extract_tool(str(self.yaml_content['baseCommand']))
         elif 'workflow' in self.yaml_content['class'].lower():
             header = '**Workflow**'
         else:
@@ -114,10 +116,22 @@ class CWLParser:
 
         self.md_file.add_text(header)
 
-    @staticmethod
-    def _extract_tool(base_command: str) -> str:
+    def _extract_tool(self, base_command: str) -> str:
         tool = base_command.replace('[', '').replace(']', '').replace("'", '').split(', ')[-1]
-        return f'[]({tool})'
+        pp = tool.split('.')
+        docroot = os.path.join("..", "..", "..")
+        docpath = os.path.join("doc", "members")
+        d = os.path.dirname(self.output_file_path)
+        if pp[0] == "nsaph":
+            docdir = "core-platform"
+        elif pp[0] == "nsaph_utils":
+            docdir = "utils"
+        elif os.path.isdir(os.path.join(d ,docroot, pp[0])):
+            docdir = pp[0]
+        else:
+            return tool
+        doc = os.path.join(docroot, docdir, docpath, pp[-1])
+        return f'[{tool}]({doc})'
 
     def _add_docs(self):
         if 'doc' not in self.yaml_content:
@@ -188,6 +202,8 @@ class CWLParser:
             elif runs.get('class').lower() == 'workflow':
                 file_name = self._handle_sub_workflow(name, runs)
                 target = f"[sub-workflow]({file_name})"
+            elif runs.get('class').lower() == 'expressiontool':
+                target = "Evaluates JavaScript expression"
             else:
                 target = runs.get('baseCommand', 'command')
 
@@ -224,13 +240,21 @@ def main():
     if args.verbose:
         logger.setLevel(logging.INFO)
 
-    cwl_files = os.listdir(args.input_dir)
+    if os.path.isdir(args.input_dir):
+        cwl_files = [
+            os.path.join(os.path.abspath(args.input_dir), file_name)
+            for file_name in os.listdir(args.input_dir)
+        ]
+    elif os.path.isfile(args.input_dir):
+        cwl_files = [args.input_dir]
+    else:
+        raise ValueError("No such file or directory: " + args.input_dir)
 
-    for file_name in cwl_files:
-        if os.path.splitext(file_name)[1].lower() != '.cwl':
+    for input_file_path in cwl_files:
+        if os.path.splitext(input_file_path)[1].lower() != '.cwl':
             continue
 
-        input_file_path = os.path.join(os.path.abspath(args.input_dir), file_name)
+        file_name = os.path.basename(input_file_path)
         output_file_path = os.path.join(os.path.abspath(args.output_dir), file_name.replace('.cwl', '.md'))
         image_file_path = os.path.join(os.path.abspath(args.output_dir), file_name.replace('.cwl', '.png'))
 

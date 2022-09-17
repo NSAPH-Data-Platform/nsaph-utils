@@ -44,7 +44,7 @@ class MDCreator:
             line = '| '
             for col_num, data_column in enumerate(data_row):
                 column_width = column_widths[col_num]
-                line += data_column.ljust(column_width) + ' | '
+                line += str(data_column).ljust(column_width) + ' | '
 
             lines.append(line)
 
