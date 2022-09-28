@@ -610,7 +610,10 @@ def get_entries(path: str) -> Tuple[List,Callable]:
         f = lambda e: io.TextIOWrapper(zfile.open(e))
     elif os.path.isdir(path):
         entries = [
-            filename for filename in glob.iglob(path + '**/**', recursive=True)
+            filename for filename in glob.iglob(
+                os.path.join(path, '**', '**'),
+                recursive=True
+            )
             if os.path.isfile(filename) and not is_readme(filename)
         ]
         f = lambda e: fopen(e, "rt")
