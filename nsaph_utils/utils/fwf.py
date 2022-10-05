@@ -35,6 +35,7 @@ import logging
 import os
 from typing import List, Tuple
 from dateutil import parser as date_parser
+from dateutil.parser import ParserError
 
 
 class FWFColumn:
@@ -200,11 +201,19 @@ class FWFReader:
                 elif column.type == "DATE":
                     v = s.strip()
                     if v:
-                    #     if len(v) == len(s) - 2:
-                    #         v = v + '01'
-                    #     elif len(v) == len(s) - 4:
-                    #         v = v + '0101'
-                         record.append(date_parser.parse(v))
+                        try:
+                            record.append(date_parser.parse(v))
+                        except ParserError as x:
+                            logging.error(
+                                "DateParser: Invalid date '{}':" 
+                                "{}:{:d}: {}[{:d}]: - {}".format(
+                                    v,
+                                    self.name,
+                                    self.line, column.name, column.ord,
+                                    str(x)
+                                )
+                            )
+                            record.append(None)
                     else:
                         record.append(None)
                 else:
@@ -217,7 +226,7 @@ class FWFReader:
                 exception_count += 1
                 if exception_count > 3:
                     logging.error(data)
-                    raise FTSParseException("Too meany exceptions", column.start)
+                    raise FTSParseException("Too many exceptions", column.start)
         return record
 
     def next(self):
