@@ -29,6 +29,21 @@ import yaml
 from nsaph_utils.docutils.md_creator import MDCreator
 
 
+cwl_src_template = """---
+orphan: true
+---
+
+# {name}
+
+```{literalinclude} ../../src/cwl/{path}
+---
+language: yaml
+---
+```
+
+"""
+
+
 logger = logging.getLogger('script')
 logger.addHandler(logging.StreamHandler())
 
@@ -59,6 +74,7 @@ class CWLParser:
 
     def parse(self):
         self._add_title()
+        self._add_source()
         self._add_image()
         self._add_contents()
         self._add_header()
@@ -72,6 +88,17 @@ class CWLParser:
     def _add_title(self):
         title = self._find_title(self.raw_content) or self._get_filename(self.output_file_path.replace('.md', '.cwl'))
         self.md_file.add_header(text=title, level=1)
+
+    def _add_source(self):
+        of = self.output_file_path.replace(".md", "cwl_src.md")
+        inf = os.path.basename(self.input_file_path)
+        content = cwl_src_template.format(name=inf, path=inf,
+                                          literalinclude="{literalinclude}")
+        with open(of, "w") as out:
+            out.write(content)
+        self.md_file.add_text("\n [Source code]({}) \n".format(
+            os.path.basename(of)
+        ))
 
     @staticmethod
     def _find_title(content: str) -> Optional[str]:
