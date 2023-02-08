@@ -435,6 +435,8 @@ class SpecialValues:
     @classmethod
     def is_missing(cls, v) -> bool:
         try:
+            if v is None:
+                return True
             return v in [
                 cls.NA,
                 cls.NaN,
