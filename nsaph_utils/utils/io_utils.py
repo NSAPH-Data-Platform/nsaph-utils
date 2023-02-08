@@ -434,20 +434,24 @@ class SpecialValues:
 
     @classmethod
     def is_missing(cls, v) -> bool:
-        return v in [
-            cls.NA,
-            cls.NaN,
-            NA_Logical,
-            NA_Real,
-            NA_Integer,
-            NA_Character,
-            NA_Complex,
-            str(NA_Logical),
-            str(NA_Real),
-            str(NA_Integer),
-            str(NA_Character),
-            str(NA_Complex)
-        ]
+        try:
+            return v in [
+                cls.NA,
+                cls.NaN,
+                NA_Logical,
+                NA_Real,
+                NA_Integer,
+                NA_Character,
+                NA_Complex,
+                str(NA_Logical),
+                str(NA_Real),
+                str(NA_Integer),
+                str(NA_Character),
+                str(NA_Complex)
+            ]
+        except:
+            logging.error("Value: " + str(v))
+            raise 
 
     @classmethod
     def is_untyped(cls, v) -> bool:
