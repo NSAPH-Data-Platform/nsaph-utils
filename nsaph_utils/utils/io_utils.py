@@ -37,8 +37,6 @@ import requests
 import yaml
 from dateutil.parser import parse
 from requests.models import Response
-from rpy2.robjects import DataFrame, NA_Logical, NA_Real, NA_Integer, \
-    NA_Character, NA_Complex
 
 from nsaph_utils.utils.pyfst import vector2list, FSTReader
 
@@ -381,31 +379,6 @@ def as_dict(json_or_yaml_file: str) -> dict:
     return content
 
 
-def dataframe2csv(df: DataFrame, dest: str, append: bool):
-    t0 = datetime.datetime.now()
-    columns = {
-        df.colnames[c]: vector2list(df[c]) for c in range(df.ncol)
-    }
-    t1 = datetime.datetime.now()
-
-    if append:
-        mode = "at"
-    else:
-        mode = "wt"
-    with fopen(dest, mode) as output:
-        writer = csv.DictWriter(output, columns, quoting=csv.QUOTE_NONNUMERIC)
-        if not append:
-            writer.writeheader()
-        for r in range(df.nrow):
-            row = {
-                column: columns[column][r] for column in columns
-            }
-            writer.writerow(row)
-    t2 = datetime.datetime.now()
-    print("{} + {} = {}".format(str(t1-t0), str(t2-t1), str(t2-t0)))
-    return
-
-
 def fst2csv(path: str, buffer_size = 10000):
     if not path.endswith(".fst"):
         raise Exception("Unknown format of file " + path)
@@ -426,129 +399,6 @@ def fst2csv(path: str, buffer_size = 10000):
                 logging.info("Read {}: {:d} x {:d}; {} {:f} rows/sec".format(path, n, width, str(t2-t0), rate))
     logger.info("Complete. Total read {}: {:d} x {:d}".format(path, width, n))
     return
-
-
-class SpecialValues:
-    NA = "NA"
-    NaN = "NaN"
-
-    @classmethod
-    def is_missing(cls, v) -> bool:
-        try:
-            if v is None:
-                return True
-            return v in [
-                cls.NA,
-                cls.NaN,
-                NA_Logical,
-                NA_Real,
-                NA_Integer,
-                NA_Character,
-                NA_Complex,
-                str(NA_Logical),
-                str(NA_Real),
-                str(NA_Integer),
-                str(NA_Character),
-                str(NA_Complex)
-            ]
-        except:
-            logging.error("Value: " + str(v))
-            raise 
-
-    @classmethod
-    def is_untyped(cls, v) -> bool:
-        if not v:
-            return True
-        return cls.is_missing(v) or v in ['0']
-
-
-class CSVFileWrapper():
-    """
-    A wrapper around CSV reader that does:
-
-    * Counts characters and line read
-    * Logging of the progress of the file being read
-    * Performs on-the-fly replacement of null and special
-      values
-    """
-
-    def __init__(self, file_like_object, sep = ',', null_replacement = SpecialValues.NA):
-        self.file_like_object = file_like_object
-        self.sep = sep
-        self.null_replacement = null_replacement
-        self.empty_string = self.sep + self.sep
-        self.null_string = self.sep + self.null_replacement + sep
-        self.empty_string_eol = self.sep + '\n'
-        self.null_string_eol = self.sep + self.null_replacement + '\n'
-        self.l = len(sep)
-        self.remainder = ""
-        self.line_number = 0
-        self.last_printed_line_number = 0
-        self.chars = 0
-
-    def __getattr__(self, called_method):
-        if called_method == "readline":
-            return self._readline
-        if called_method == "read":
-            return self._read
-        return getattr(self.file_like_object, called_method)
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        self.file_like_object.close()
-
-    def _replace_empty(self, s: str):
-        while self.empty_string in s:
-            s = s.replace(self.empty_string, self.null_string)
-        s = s.replace(self.empty_string_eol, self.null_string_eol)
-        return s
-
-    def _readline(self):
-        line = self.file_like_object.readline()
-        self.line_number += 1
-        self.chars += len(line)
-        return self._replace_empty(line)
-
-    def _read(self, size, *args, **keyargs):
-        if (len(self.remainder) < size):
-            raw_buffer = self.file_like_object.read(size, *args, **keyargs)
-            buffer = raw_buffer
-            while buffer[-self.l:] == self.sep:
-                next_char = self.file_like_object.read(self.l)
-                buffer += next_char
-            buffer = self._replace_empty(buffer)
-        else:
-            raw_buffer = ""
-            buffer = raw_buffer
-        if self.remainder:
-            buffer = self.remainder + buffer
-            self.remainder = ""
-
-        if len(buffer) > size:
-            self.remainder = buffer[size - len(buffer):]
-            result = buffer[0:size]
-        else:
-            result = buffer
-
-        self.chars += len(result)
-        nl = result.count('\n')
-        self.line_number += nl
-        t = datetime.datetime.now()
-        if (self.line_number - self.last_printed_line_number) > 1000000:
-            if self.chars > 1000000000:
-                c = "{:7.2f}G".format(self.chars/1000000000.0)
-            elif self.chars > 1000000:
-                c = "{:6.2f}M".format(self.chars/1000000.0)
-            else:
-                c = str(self.chars)
-            dt = datetime.datetime.now() - t
-            t = datetime.datetime.now()
-            logging.info("{}: Processed {:,}/{} lines/chars [{}]"
-                  .format(str(t), self.line_number, c, str(dt)))
-            self.last_printed_line_number = self.line_number
-        return result
 
 
 def basename(path):
@@ -688,5 +538,166 @@ def is_yaml_or_json(path: str) -> bool:
         if path.endswith(ext) or path.endswith(ext + ".gz"):
             return True
     return  False
+
+
+### R Dependencies
+
+try:
+    from rpy2.robjects import DataFrame, NA_Logical, NA_Real, NA_Integer, \
+        NA_Character, NA_Complex
+
+
+    def dataframe2csv(df: DataFrame, dest: str, append: bool):
+        t0 = datetime.datetime.now()
+        columns = {
+            df.colnames[c]: vector2list(df[c]) for c in range(df.ncol)
+        }
+        t1 = datetime.datetime.now()
+
+        if append:
+            mode = "at"
+        else:
+            mode = "wt"
+        with fopen(dest, mode) as output:
+            writer = csv.DictWriter(output, columns, quoting=csv.QUOTE_NONNUMERIC)
+            if not append:
+                writer.writeheader()
+            for r in range(df.nrow):
+                row = {
+                    column: columns[column][r] for column in columns
+                }
+                writer.writerow(row)
+        t2 = datetime.datetime.now()
+        print("{} + {} = {}".format(str(t1-t0), str(t2-t1), str(t2-t0)))
+        return
+
+    R_NA_values = [
+        NA_Logical,
+        NA_Real,
+        NA_Integer,
+        NA_Character,
+        NA_Complex,
+        str(NA_Logical),
+        str(NA_Real),
+        str(NA_Integer),
+        str(NA_Character),
+        str(NA_Complex)
+    ]
+
+
+except:
+    R_NA_values= []
+
+class SpecialValues:
+    NA = "NA"
+    NaN = "NaN"
+
+    @classmethod
+    def is_missing(cls, v) -> bool:
+        try:
+            if v is None:
+                return True
+            return v in [
+                cls.NA,
+                cls.NaN,
+            ]   + R_NA_values
+        except:
+            logging.error("Value: " + str(v))
+            raise
+
+    @classmethod
+    def is_untyped(cls, v) -> bool:
+        if not v:
+            return True
+        return cls.is_missing(v) or v in ['0']
+
+
+class CSVFileWrapper():
+    """
+    A wrapper around CSV reader that does:
+
+    * Counts characters and line read
+    * Logging of the progress of the file being read
+    * Performs on-the-fly replacement of null and special
+      values
+    """
+
+    def __init__(self, file_like_object, sep = ',', null_replacement = SpecialValues.NA):
+        self.file_like_object = file_like_object
+        self.sep = sep
+        self.null_replacement = null_replacement
+        self.empty_string = self.sep + self.sep
+        self.null_string = self.sep + self.null_replacement + sep
+        self.empty_string_eol = self.sep + '\n'
+        self.null_string_eol = self.sep + self.null_replacement + '\n'
+        self.l = len(sep)
+        self.remainder = ""
+        self.line_number = 0
+        self.last_printed_line_number = 0
+        self.chars = 0
+
+    def __getattr__(self, called_method):
+        if called_method == "readline":
+            return self._readline
+        if called_method == "read":
+            return self._read
+        return getattr(self.file_like_object, called_method)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.file_like_object.close()
+
+    def _replace_empty(self, s: str):
+        while self.empty_string in s:
+            s = s.replace(self.empty_string, self.null_string)
+        s = s.replace(self.empty_string_eol, self.null_string_eol)
+        return s
+
+    def _readline(self):
+        line = self.file_like_object.readline()
+        self.line_number += 1
+        self.chars += len(line)
+        return self._replace_empty(line)
+
+    def _read(self, size, *args, **keyargs):
+        if (len(self.remainder) < size):
+            raw_buffer = self.file_like_object.read(size, *args, **keyargs)
+            buffer = raw_buffer
+            while buffer[-self.l:] == self.sep:
+                next_char = self.file_like_object.read(self.l)
+                buffer += next_char
+            buffer = self._replace_empty(buffer)
+        else:
+            raw_buffer = ""
+            buffer = raw_buffer
+        if self.remainder:
+            buffer = self.remainder + buffer
+            self.remainder = ""
+
+        if len(buffer) > size:
+            self.remainder = buffer[size - len(buffer):]
+            result = buffer[0:size]
+        else:
+            result = buffer
+
+        self.chars += len(result)
+        nl = result.count('\n')
+        self.line_number += nl
+        t = datetime.datetime.now()
+        if (self.line_number - self.last_printed_line_number) > 1000000:
+            if self.chars > 1000000000:
+                c = "{:7.2f}G".format(self.chars/1000000000.0)
+            elif self.chars > 1000000:
+                c = "{:6.2f}M".format(self.chars/1000000.0)
+            else:
+                c = str(self.chars)
+            dt = datetime.datetime.now() - t
+            t = datetime.datetime.now()
+            logging.info("{}: Processed {:,}/{} lines/chars [{}]"
+                  .format(str(t), self.line_number, c, str(dt)))
+            self.last_printed_line_number = self.line_number
+        return result
 
 
