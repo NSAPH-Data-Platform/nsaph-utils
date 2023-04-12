@@ -25,9 +25,13 @@ setup(
     install_requires=[
         'deprecated',
         'PyYAML',
-        'rpy2',
         'tqdm',
     ],
+    extras_require = {
+        "FST": [
+            'rpy2'
+        ]
+    },
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: Harvard University :: Development",
