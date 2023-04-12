@@ -6,7 +6,7 @@ with open("README.md", "r") as readme:
 
 setup(
     name='nsaph_utils',
-    version="0.0.5.19",
+    version="0.1.1.1",
     url='https://gitlab-int.rc.fas.harvard.edu/rse/francesca_dominici/tools/nsaph_utils',
     license='',
     author='Ben Sabath',

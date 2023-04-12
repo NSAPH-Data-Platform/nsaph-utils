@@ -38,7 +38,6 @@ import yaml
 from dateutil.parser import parse
 from requests.models import Response
 
-from nsaph_utils.utils.pyfst import vector2list, FSTReader
 
 logger = logging.getLogger(__name__)
 
@@ -379,27 +378,6 @@ def as_dict(json_or_yaml_file: str) -> dict:
     return content
 
 
-def fst2csv(path: str, buffer_size = 10000):
-    if not path.endswith(".fst"):
-        raise Exception("Unknown format of file " + path)
-    name = path[:-4]
-    dest = name + ".csv.gz"
-    n = 0
-    t0 = datetime.now()
-    with FSTReader(path, returns_mapping=True) as reader, fopen(dest, "wt") as output:
-        writer = csv.DictWriter(output, reader.columns, quoting=csv.QUOTE_NONNUMERIC)
-        writer.writeheader()
-        width = len(reader.columns)
-        for row in reader:
-            writer.writerow(row)
-            n += 1
-            if (n % buffer_size) == 0:
-                t2 = datetime.now()
-                rate = n / (t2 - t0).seconds
-                logging.info("Read {}: {:d} x {:d}; {} {:f} rows/sec".format(path, n, width, str(t2-t0), rate))
-    logger.info("Complete. Total read {}: {:d} x {:d}".format(path, width, n))
-    return
-
 
 def basename(path):
     """
@@ -545,6 +523,28 @@ def is_yaml_or_json(path: str) -> bool:
 try:
     from rpy2.robjects import DataFrame, NA_Logical, NA_Real, NA_Integer, \
         NA_Character, NA_Complex
+    from nsaph_utils.utils.pyfst import vector2list, FSTReader
+
+    def fst2csv(path: str, buffer_size = 10000):
+        if not path.endswith(".fst"):
+            raise Exception("Unknown format of file " + path)
+        name = path[:-4]
+        dest = name + ".csv.gz"
+        n = 0
+        t0 = datetime.now()
+        with FSTReader(path, returns_mapping=True) as reader, fopen(dest, "wt") as output:
+            writer = csv.DictWriter(output, reader.columns, quoting=csv.QUOTE_NONNUMERIC)
+            writer.writeheader()
+            width = len(reader.columns)
+            for row in reader:
+                writer.writerow(row)
+                n += 1
+                if (n % buffer_size) == 0:
+                    t2 = datetime.now()
+                    rate = n / (t2 - t0).seconds
+                    logging.info("Read {}: {:d} x {:d}; {} {:f} rows/sec".format(path, n, width, str(t2-t0), rate))
+        logger.info("Complete. Total read {}: {:d} x {:d}".format(path, width, n))
+        return
 
 
     def dataframe2csv(df: DataFrame, dest: str, append: bool):
