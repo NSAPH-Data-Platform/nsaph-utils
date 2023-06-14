@@ -40,6 +40,7 @@ from requests.models import Response
 
 
 logger = logging.getLogger(__name__)
+HEADERS = {'User-Agent': 'NSAPH Data warehouse app; https://github.com/NSAPH-Data-Platform'}
 
 
 def sizeof_fmt(num, suffix="B") -> str:
@@ -241,8 +242,9 @@ def check_http_response(r: Response):
 
 
 def download(url: str, to: IO):
-    """An utility method to download large binary data to a file-like object"""
-    response = requests.get(url, stream=True)
+    """A utility method to download large binary data to a file-like object"""
+    response = requests.get(url, stream=True, headers=HEADERS)
+    check_http_response(response)
     for chunk in response.iter_content(chunk_size=1048576):
         to.write(chunk)
         print('#', end='')
