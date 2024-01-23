@@ -31,3 +31,10 @@ def mem() -> int:
         m = mem_info.rss
     return m
 
+
+def qmem() -> int:
+    return psutil.Process(os.getpid()).memory_info().rss
+
+def qqmem(pid) -> int:
+    return psutil.Process(pid).memory_info().rss
+
